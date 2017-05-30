@@ -64,7 +64,7 @@ void bounding_box(Mat_<uchar> edge, vector<Point2i> center, Mat_<uchar> img)
                 img[i + it.x - size / 2][it.y + size / 2] = 0;
             }
             //imshow("test", img);
-            waitKey();
+            //waitKey();
         }
         
     }
@@ -94,6 +94,65 @@ int isCar(Point2i center, Mat_<uchar> canny) {
         //continue;
         vector<int> projection(box.cols, 0);
         bool fail = false;
+
+        for (int j = 0; j < box.cols; j++)
+        {
+
+            for (int i = box.rows - 1; i >= 0; i--)
+            {
+                if (box[i][j] == 255)
+                {
+                    projection[j]++;
+                }
+            }
+
+            if (scazut == 0)
+            {
+                if (old > projection[j])
+                {
+                    if (ct_scazut < 3)
+                    {
+                        ct_scazut++;
+                    }
+                    else
+                    {
+                        scazut = 1;
+                    }
+                }
+                else
+                {
+                    if (ct_scazut > 0)
+                    {
+                        ct_scazut = 0;
+                    }
+                }
+            }
+            else
+            {
+                if (old > projection[j])
+                {
+                    if (ct_crescut > 0)
+                    {
+                        ct_crescut = 0;
+                    }
+                }
+                else
+                {
+                    if (ct_crescut < 3)
+                    {
+                        ct_crescut++;
+                    }
+                    else
+                    {
+                        fail = true;
+                    }
+                }
+            }
+        }
+        if (!fail) {
+            return sizes[size];
+        }
+        
         /*
         for (int j = 0; j < box.cols; j++)
         {
@@ -437,6 +496,6 @@ void test()
         createTrackbar(" Canny thresh:", "Source", &thresh, max_thresh, thresh_callback);
         thresh_callback(0, 0);
 
-        waitKey(0);
+        if (waitKey(30) > 0) break;
     }
 }
