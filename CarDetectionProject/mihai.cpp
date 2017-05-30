@@ -19,11 +19,143 @@ RNG rng(12345);
 int di[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
 int dj[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
 
+int sizes[] = { 30, 40, 50, 60, 70, 80 };
+
+int isCar(Point2i center, Mat_<uchar> canny);
+Mat_<uchar> getBox(Point2i center, Mat_<uchar> canny, int size);
+
+
+void showHistogram(const string& name, int* hist, const int  hist_cols, const int hist_height)
+{
+    Mat imgHist(hist_height, hist_cols, CV_8UC3, CV_RGB(255, 255, 255)); // constructs a white image
+
+                                                                         //computes histogram maximum
+    int max_hist = 0;
+    for (int i = 0; i<hist_cols; i++)
+        if (hist[i] > max_hist)
+            max_hist = hist[i];
+    double scale = 1.0;
+    scale = (double)hist_height / max_hist;
+    int baseline = hist_height - 1;
+
+    for (int x = 0; x < hist_cols; x++) {
+        Point p1 = Point(x, baseline);
+        Point p2 = Point(x, baseline - cvRound(hist[x] * scale));
+        line(imgHist, p1, p2, CV_RGB(255, 0, 255)); // histogram bins colored in magenta
+    }
+
+    imshow(name, imgHist);
+}
+
+
+void bounding_box(Mat_<uchar> edge, vector<Point2i> center, Mat_<uchar> img)
+{
+    for (Point2i it : center)
+    {
+        int size;
+        if ((size = isCar(it, edge)) != 0)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                img[it.x - size / 2][i + it.y - size/2] = 0;
+                img[it.x + size / 2][i + it.y - size / 2] = 0;
+
+                img[i + it.x - size / 2][it.y - size / 2] = 0;
+                img[i + it.x - size / 2][it.y + size / 2] = 0;
+            }
+            //imshow("test", img);
+            waitKey();
+        }
+        
+    }
+    
+}
+
+int isCar(Point2i center, Mat_<uchar> canny) {
+
+    for (int size = 0; size < 6; size++) {
+        Mat_<uchar> box = getBox(center, canny, sizes[size]/2);
+        if (box.rows == 0 || box.cols == 0)
+        {
+            continue;
+        }
+        imshow("Test box", box);
+        
+
+        int faza = 0;
+
+        int scaderi = 0;
+        int ct_scazut = 0;
+        int ct_crescut = 0;
+
+        int scazut = 0;
+        int old = 0;
+
+        //continue;
+        vector<int> projection(box.cols, 0);
+        bool fail = false;
+        /*
+        for (int j = 0; j < box.cols; j++)
+        {
+            
+            for (int i = box.rows - 1; i >= 0; i--)
+            {
+                if (box[i][j] == 255)
+                {
+                    projection[j]++;
+                }
+            }
+            if (projection[j] < old && scazut ==0) {
+                scazut = 1;
+            }
+            else if(projection[j]>old && scazut == 1) {
+                fail = true;
+            }
+            old = projection[j];
+        }
+        if (!fail) {
+            return sizes[size];
+        }
+        */
+
+        showHistogram("Proiectie", &projection[0], box.cols, 100);
+
+
+
+        //waitKey();
+    }
+
+    return 0;
+}
+
+//iti da cutia in jur la punct vezi ca-i dam size/2
+Mat_<uchar> getBox(Point2i center, Mat_<uchar> canny,int size) {
+    Mat_<uchar> nullMat(0, 0);
+    if (center.x - size < 0 || center.x + size > canny.rows)
+        return nullMat;
+    if (center.y - size < 0 || center.y + size > canny.cols)
+        return nullMat;
+
+    Mat_<uchar> res(size*2 + 1, size*2 + 1, (uchar)0);
+    for (int i = center.x - size; i < center.x + size + 1; i++) {
+        int ct = 0;
+        for (int j = center.y - size; j < center.y + 1; j++) {
+            if (canny[i][j] == canny[i][center.y + size - (j - (center.y - size))]) {
+                res[i - (center.x - size)][j - (center.y - size)] = canny[i][j];
+                res[i - (center.x - size)][size * 2 + 1 - (j - (center.y - size))] = canny[i][j];
+            }
+        }
+    }
+
+    return res;
+}
 
 vector<Point2i> getNeighbours(Mat_<int> s, int oi, int oj) {
     vector<Point2i> res;
-    for (int i = oi - 1; i < oi + 2; i++) {
-        for (int j = oj - 3; j < oj + 4; j++){
+    int distantX = 6;
+    int distantY = 3;
+    for (int i = oi - distantY; i < oi + distantY + 1; i++) {
+        for (int j = oj - distantX; j < oj + distantX + 1; j++){
             if (i >= 0 && i < s.rows && j >= 0 && j < s.cols) {
                 res.push_back(Point2i(i, j));
 
@@ -166,7 +298,7 @@ int getSymmetry(Mat_<uchar> img, int oi, int oj, int W, int H) {
 }
 
 //edges
-void roi_detect(Mat_<uchar> img) {
+void roi_detect(Mat_<uchar> img, Mat_<uchar> orig) {
 
     int height_offset = img.rows / 5;
     int width_offset = img.cols / 10;
@@ -212,8 +344,10 @@ void roi_detect(Mat_<uchar> img) {
         c[it.x][it.y] = 255;
     }
     imshow("Centre de clustere", c);
-    
-    //
+    printf("%d", centers.size());
+
+
+    bounding_box(img, centers, orig);
 
 }
 
@@ -247,7 +381,10 @@ void thresh_callback(int, void*)
     namedWindow("Contours", CV_WINDOW_AUTOSIZE);
     imshow("Contours", drawing);
 
-    roi_detect(drawing);
+    roi_detect(drawing, src_gray);
+
+    imshow("car_detect", src_gray);
+    //waitKey();
 }
 
 
