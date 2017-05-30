@@ -387,11 +387,11 @@ void roi_detect(Mat_<uchar> img, Mat_<uchar> orig) {
             }
         }
     }
-    printf("Max s = %d\n", maxS);
+   // printf("Max s = %d\n", maxS);
 
 
     peek(s, img.rows, img.cols, height_offset, width_offset);
-    print_matrix(s);
+    //print_matrix(s);
 
 
 
@@ -403,7 +403,7 @@ void roi_detect(Mat_<uchar> img, Mat_<uchar> orig) {
         c[it.x][it.y] = 255;
     }
     imshow("Centre de clustere", c);
-    printf("%d", centers.size());
+    //printf("%d", centers.size());
 
 
     bounding_box(img, centers, orig);
